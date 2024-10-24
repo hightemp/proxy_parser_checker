@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/hightemp/proxy_parser_checker/internal/checker"
 	"github.com/hightemp/proxy_parser_checker/internal/config"
 	"github.com/hightemp/proxy_parser_checker/internal/logger"
 	"github.com/hightemp/proxy_parser_checker/internal/parser"
@@ -20,8 +21,9 @@ func main() {
 		logger.PanicError("%v", err)
 	}
 
-	c := config.GetConfig()
+	cfg := config.GetConfig()
 	logger.LogDebug("Config loaded")
 
-	parser.ParsingLoop(c)
+	go parser.Loop(cfg)
+	go checker.Loop(cfg)
 }

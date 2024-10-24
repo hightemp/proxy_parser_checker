@@ -21,7 +21,7 @@ func InitLogger() {
 	loggers[DEBUG] = log.New(os.Stdout, "DEBUG: ", log.Ltime)
 	loggers[INFO] = log.New(os.Stdout, "INFO: ", log.Ltime)
 	loggers[WARNING] = log.New(os.Stdout, "WARNING: ", log.Ltime)
-	loggers[ERROR] = log.New(os.Stderr, "ERROR: ", log.Ltime|log.Lshortfile)
+	loggers[ERROR] = log.New(os.Stderr, "ERROR: ", log.Ltime|log.Llongfile)
 }
 
 func LogDebug(format string, v ...any) {

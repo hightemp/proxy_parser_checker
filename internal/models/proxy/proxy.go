@@ -15,16 +15,23 @@ const (
 )
 
 type Proxy struct {
-	Ip              string    `yaml:"ip"`
-	Port            string    `yaml:"port"`
-	Protocol        string    `yaml:"protocol"`
-	LastCheckedTime time.Time `yaml:"last_checked_time"`
+	Ip              string        `yaml:"ip"`
+	Port            string        `yaml:"port"`
+	Protocol        string        `yaml:"protocol"`
+	LastCheckedTime time.Time     `yaml:"last_checked_time"`
+	PingTime        time.Duration `yaml:"ping_time"`
+	IsWork          bool          `yaml:"is_work"`
 }
 
 var (
-	IsDirty     bool = false
-	proxiesList []Proxy
+	IsDirty             bool = false
+	proxiesList         []Proxy
+	checkPeriodDuration time.Duration
 )
+
+func SetCheckPeriodDuration(t time.Duration) {
+	checkPeriodDuration = t
+}
 
 func Find(p Proxy) int {
 	for i, pi := range proxiesList {
@@ -50,6 +57,22 @@ func AddList(pl []Proxy) {
 	for _, p := range pl {
 		Add(p)
 	}
+}
+
+func IsExpired(t time.Time) bool {
+	now := time.Now()
+	expirationTime := t.Add(checkPeriodDuration)
+	return now.After(expirationTime)
+}
+
+func GetLastNotCheckedOne() *Proxy {
+	for i := range proxiesList {
+		if IsExpired(proxiesList[i].LastCheckedTime) {
+			return &proxiesList[i]
+		}
+	}
+
+	return nil
 }
 
 func Save() error {

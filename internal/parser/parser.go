@@ -32,12 +32,13 @@ func parseSite(client *http.Client, lastSite *site.Site) {
 	mtx.Lock()
 	defer mtx.Unlock()
 
+	lastSite.LastParsedTime = time.Now()
+
 	logger.LogDebug("[parser] Making request to '%s'", lastSite.Url)
 	resp, err := client.Get(lastSite.Url)
 
 	if err != nil {
 		logger.LogError("[parser] Can't get url: '%s', %v", lastSite.Url, err)
-		lastSite.LastParsedTime = time.Now()
 		return
 	}
 
@@ -45,13 +46,10 @@ func parseSite(client *http.Client, lastSite *site.Site) {
 	_, err = bodyBuffer.ReadFrom(resp.Body)
 	if err != nil {
 		logger.LogError("[parser] Can't read body: %v", err)
-		lastSite.LastParsedTime = time.Now()
 		return
 	}
 	body := bodyBuffer.String()
 	resp.Body.Close()
-
-	// fmt.Println(body)
 
 	logger.LogDebug("[parser] parsing '%s'", lastSite.Url)
 
@@ -59,12 +57,13 @@ func parseSite(client *http.Client, lastSite *site.Site) {
 		if p.IsTargetSite(lastSite.Url) {
 			logger.LogDebug("[parser] detected '%s'", reflect.TypeOf(p).String())
 			proxy.AddList(p.ParseProxyList(body))
-			lastSite.LastParsedTime = time.Now()
+			proxy.Save()
+			return
 		}
 	}
 }
 
-func ParsingLoop(c *config.Config) {
+func Loop(cfg *config.Config) {
 	client := &http.Client{
 		Timeout: time.Second * 30,
 	}
@@ -72,18 +71,19 @@ func ParsingLoop(c *config.Config) {
 	AddParser(&parsers.ProxyListParser{})
 	AddParser(&parsers.TextListParser{})
 
-	site.Init(c)
-	site.AddSites()
+	site.SetParsePeriodDuration(cfg.ParsePeriodDuration)
+	site.AddList(cfg.SitesForParsing)
 
 	for {
 		lastSite := site.GetLastOne()
 
 		if lastSite == nil {
+			logger.LogDebug("[parser] No site found")
 			time.Sleep(time.Minute)
-			proxy.Save()
 			continue
 		}
 
-		go parseSite(client, lastSite)
+		logger.LogDebug("[parser] Found site: '%s'", lastSite.Url)
+		parseSite(client, lastSite)
 	}
 }

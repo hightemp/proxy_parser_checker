@@ -12,6 +12,8 @@ type Config struct {
 	SitesForParsing     []string `yaml:"sites_for_parsing"`
 	ParsePeriod         string   `yaml:"parse_period"`
 	ParsePeriodDuration time.Duration
+	CheckPeriod         string `yaml:"check_period"`
+	CheckPeriodDuration time.Duration
 }
 
 var c Config
@@ -33,6 +35,12 @@ func Load(path string) error {
 
 	if err != nil {
 		return fmt.Errorf("Can't parse duration in 'ParsePeriod': %v", err)
+	}
+
+	c.CheckPeriodDuration, err = time.ParseDuration(c.CheckPeriod)
+
+	if err != nil {
+		return fmt.Errorf("Can't parse duration in 'CheckPeriod': %v", err)
 	}
 
 	return nil

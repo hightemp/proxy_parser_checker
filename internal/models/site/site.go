@@ -1,9 +1,12 @@
 package site
 
 import (
+	"fmt"
+	"os"
 	"time"
 
-	"github.com/hightemp/proxy_parser_checker/internal/config"
+	"github.com/hightemp/proxy_parser_checker/internal/logger"
+	"gopkg.in/yaml.v3"
 )
 
 type Site struct {
@@ -11,31 +14,75 @@ type Site struct {
 	LastParsedTime time.Time
 }
 
-var cfg *config.Config
-var sites []Site
+var (
+	sites               []Site
+	IsDirty             = false
+	parsePeriodDuration time.Duration
+)
 
-func Init(c *config.Config) {
-	cfg = c
+func SetParsePeriodDuration(t time.Duration) {
+	parsePeriodDuration = t
 }
 
-func AddSites() {
-	for _, url := range cfg.SitesForParsing {
+func FindUrl(url string) int {
+	for i, si := range sites {
+		if si.Url == url {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func Add(url string) {
+	index := FindUrl(url)
+
+	if index == -1 {
 		sites = append(sites, Site{Url: url})
+		IsDirty = true
+		logger.LogDebug("[site] added site '%s'", url)
+	}
+}
+
+func AddList(urlList []string) {
+	for _, url := range urlList {
+		Add(url)
 	}
 }
 
 func IsExpired(t time.Time) bool {
 	now := time.Now()
-	expirationTime := t.Add(cfg.ParsePeriodDuration)
+	expirationTime := t.Add(parsePeriodDuration)
 	return now.After(expirationTime)
 }
 
 func GetLastOne() *Site {
-	for _, s := range sites {
-		if IsExpired(s.LastParsedTime) {
-			return &s
+	for i := range sites {
+		if IsExpired(sites[i].LastParsedTime) {
+			return &sites[i]
 		}
 	}
 
+	return nil
+}
+
+func Save() error {
+	if !IsDirty {
+		return nil
+	}
+
+	yamlText, err := yaml.Marshal(sites)
+
+	if err != nil {
+		return fmt.Errorf("Can't pack to yaml: %v", err)
+	}
+
+	err = os.WriteFile("./sites_for_parsing.yaml", yamlText, 0644)
+
+	if err != nil {
+		return fmt.Errorf("Can't write file: %v", err)
+	}
+
+	IsDirty = false
 	return nil
 }

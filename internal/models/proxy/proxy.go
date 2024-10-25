@@ -95,3 +95,32 @@ func Save() error {
 	IsDirty = false
 	return nil
 }
+
+func GetWorkProxies() []*Proxy {
+	var result []*Proxy
+
+	for i := range proxiesList {
+		if proxiesList[i].IsWork {
+			result = append(result, &proxiesList[i])
+		}
+	}
+
+	return result
+}
+
+func SaveWorkProxies() error {
+	yamlText, err := yaml.Marshal(GetWorkProxies())
+
+	if err != nil {
+		return fmt.Errorf("Can't pack to yaml: %v", err)
+	}
+
+	err = os.WriteFile("./out/work_proxies.yaml", yamlText, 0644)
+
+	if err != nil {
+		return fmt.Errorf("Can't write file: %v", err)
+	}
+
+	IsDirty = false
+	return nil
+}

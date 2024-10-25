@@ -77,7 +77,7 @@ func Save() error {
 		return fmt.Errorf("Can't pack to yaml: %v", err)
 	}
 
-	err = os.WriteFile("./sites_for_parsing.yaml", yamlText, 0644)
+	err = os.WriteFile("./out/sites_for_parsing.yaml", yamlText, 0644)
 
 	if err != nil {
 		return fmt.Errorf("Can't write file: %v", err)

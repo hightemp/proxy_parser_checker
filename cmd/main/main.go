@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/hightemp/proxy_parser_checker/internal/checker"
 	"github.com/hightemp/proxy_parser_checker/internal/config"
@@ -26,4 +29,10 @@ func main() {
 
 	go parser.Loop(cfg)
 	go checker.Loop(cfg)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-sigChan
+
+	logger.LogDebug("Received signal: %v", sig)
 }

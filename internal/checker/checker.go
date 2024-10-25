@@ -19,12 +19,34 @@ var (
 	mtx sync.Mutex
 )
 
+const (
+	maxWorkers = 10
+)
+
+type ProxyChecker struct {
+	proxyChan chan *proxy.Proxy
+	wg        sync.WaitGroup
+}
+
+func NewProxyChecker() *ProxyChecker {
+	return &ProxyChecker{
+		proxyChan: make(chan *proxy.Proxy, maxWorkers),
+	}
+}
+
+func (pc *ProxyChecker) worker() {
+	defer pc.wg.Done()
+
+	for p := range pc.proxyChan {
+		checkProxy(p)
+	}
+}
+
 func checkProxy(lastProxy *proxy.Proxy) {
 	mtx.Lock()
-	defer mtx.Unlock()
-
 	lastProxy.LastCheckedTime = time.Now()
 	lastProxy.IsWork = false
+	mtx.Unlock()
 
 	proxyURL := fmt.Sprintf("%s://%s:%s", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
 	proxyUrlParsed, err := url.Parse(proxyURL)
@@ -41,9 +63,10 @@ func checkProxy(lastProxy *proxy.Proxy) {
 
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   time.Second * 30,
+		Timeout:   time.Second * 5,
 	}
 
+	logger.LogDebug("[checker] Making request with proxy '%s://%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
 	startTime := time.Now()
 	resp, err := client.Get("https://api.ipify.org?format=json")
 	pingTime := time.Since(startTime)
@@ -86,18 +109,31 @@ func checkProxy(lastProxy *proxy.Proxy) {
 
 	logger.LogInfo("[checker] Found response ip: %v", ip)
 
+	mtx.Lock()
 	lastProxy.IsWork = true
 	lastProxy.PingTime = pingTime
+	mtx.Unlock()
 
 	logger.LogInfo("[checker] Proxy checked successfully. Ping time: %v", pingTime)
+	proxy.SaveWorkProxies()
+	proxy.Save()
 }
 
 func Loop(cfg *config.Config) {
 	proxy.SetCheckPeriodDuration(cfg.CheckPeriodDuration)
 
-	for {
-		lastProxy := proxy.GetLastNotCheckedOne()
+	pc := NewProxyChecker()
 
+	for i := 0; i < maxWorkers; i++ {
+		pc.wg.Add(1)
+		go pc.worker()
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		lastProxy := proxy.GetLastNotCheckedOne()
 		if lastProxy == nil {
 			logger.LogDebug("[checker] No proxy found")
 			time.Sleep(10 * time.Second)
@@ -105,6 +141,6 @@ func Loop(cfg *config.Config) {
 		}
 
 		logger.LogDebug("[checker] Found proxy: %s '%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
-		go checkProxy(lastProxy)
+		pc.proxyChan <- lastProxy
 	}
 }

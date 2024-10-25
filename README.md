@@ -5,5 +5,13 @@ A Go program that automatically parses and checks proxy servers from various sou
 ## Build
 
 ```bash
-make
+make build
+./proxy_parser_checker
+```
+
+### Static build 
+
+```bash
+make build_static
+./proxy_parser_checker_static
 ```

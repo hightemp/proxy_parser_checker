@@ -16,4 +16,4 @@ make build_static
 ./proxy_parser_checker_static
 ```
 
-![](https://asdertasd.site/counter/hightemp?a=1)
+![](https://asdertasd.site/counter/proxy_parser_checker?a=1)

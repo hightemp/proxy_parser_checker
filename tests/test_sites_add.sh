@@ -5,5 +5,5 @@ curl -X POST \
      -d '{
        "url": "https://example.com/proxy-list"
      }' \
-     http://localhost:8080/sites/add
+     http://localhost:8081/sites/add
 echo

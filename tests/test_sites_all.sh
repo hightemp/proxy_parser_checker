@@ -2,5 +2,5 @@
 
 curl -X GET \
      -H "Content-Type: application/json" \
-     http://localhost:8080/sites/all
+     http://localhost:8081/sites/all
 echo

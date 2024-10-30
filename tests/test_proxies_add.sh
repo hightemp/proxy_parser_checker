@@ -7,5 +7,5 @@ curl -X POST \
        "port": "8080",
        "protocol": "http"
      }' \
-     http://localhost:8080/proxies/add
+     http://localhost:8081/proxies/add
 echo

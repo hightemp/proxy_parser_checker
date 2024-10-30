@@ -14,6 +14,7 @@ type Config struct {
 	ParsePeriodDuration time.Duration
 	CheckPeriod         string `yaml:"check_period"`
 	CheckPeriodDuration time.Duration
+	ServerPort          string `yaml:"server_port"`
 }
 
 var c Config

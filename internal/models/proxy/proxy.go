@@ -124,3 +124,7 @@ func SaveWorkProxies() error {
 	IsDirty = false
 	return nil
 }
+
+func GetAllProxies() []Proxy {
+	return proxiesList
+}

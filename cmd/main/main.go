@@ -10,6 +10,7 @@ import (
 	"github.com/hightemp/proxy_parser_checker/internal/config"
 	"github.com/hightemp/proxy_parser_checker/internal/logger"
 	"github.com/hightemp/proxy_parser_checker/internal/parser"
+	"github.com/hightemp/proxy_parser_checker/internal/server"
 )
 
 func main() {
@@ -26,6 +27,8 @@ func main() {
 
 	cfg := config.GetConfig()
 	logger.LogDebug("Config loaded")
+
+	go server.Start()
 
 	go parser.Loop(cfg)
 	go checker.Loop(cfg)

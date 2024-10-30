@@ -86,3 +86,7 @@ func Save() error {
 	IsDirty = false
 	return nil
 }
+
+func GetAllSites() []Site {
+	return sites
+}

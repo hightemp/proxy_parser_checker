@@ -1,3 +1,4 @@
+server_port: 8080
 check_period: 1h
 parse_period: 1h
 sites_for_parsing:

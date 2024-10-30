@@ -187,6 +187,6 @@ func Start() {
 
 	logger.LogInfo("Starting HTTP server on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		logger.LogError("Failed to start HTTP server: %v", err)
+		logger.PanicError("Failed to start HTTP server: %v", err)
 	}
 }

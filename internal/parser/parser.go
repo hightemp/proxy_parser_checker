@@ -14,9 +14,19 @@ import (
 	"github.com/hightemp/proxy_parser_checker/internal/parser/parsers"
 )
 
+const (
+	maxWorkers = 5
+)
+
 type IParser interface {
 	IsTargetSite(url string) bool
 	ParseProxyList(s string) []proxy.Proxy
+}
+
+type Worker struct {
+	siteChan chan *site.Site
+	wg       sync.WaitGroup
+	client   *http.Client
 }
 
 var (
@@ -28,14 +38,37 @@ func AddParser(p IParser) {
 	parsersList = append(parsersList, p)
 }
 
-func parseSite(client *http.Client, lastSite *site.Site) {
-	mtx.Lock()
-	defer mtx.Unlock()
+func NewWorker() *Worker {
+	return &Worker{
+		siteChan: make(chan *site.Site, maxWorkers),
+		client: &http.Client{
+			Timeout: time.Second * 30,
+		},
+	}
+}
 
+func (w *Worker) StartWorkers() {
+	for i := 0; i < maxWorkers; i++ {
+		w.wg.Add(1)
+		go w.work()
+	}
+}
+
+func (w *Worker) work() {
+	defer w.wg.Done()
+
+	for s := range w.siteChan {
+		w.parse(s)
+	}
+}
+
+func (w *Worker) parse(lastSite *site.Site) {
+	mtx.Lock()
 	lastSite.LastParsedTime = time.Now()
+	mtx.Unlock()
 
 	logger.LogDebug("[parser] Making request to '%s'", lastSite.Url)
-	resp, err := client.Get(lastSite.Url)
+	resp, err := w.client.Get(lastSite.Url)
 
 	if err != nil {
 		logger.LogError("[parser] Can't get url: '%s', %v", lastSite.Url, err)
@@ -56,17 +89,18 @@ func parseSite(client *http.Client, lastSite *site.Site) {
 	for _, p := range parsersList {
 		if p.IsTargetSite(lastSite.Url) {
 			logger.LogDebug("[parser] detected '%s'", reflect.TypeOf(p).String())
+			mtx.Lock()
 			proxy.AddList(p.ParseProxyList(body))
 			proxy.Save()
+			mtx.Unlock()
 			return
 		}
 	}
 }
 
 func Loop(cfg *config.Config) {
-	client := &http.Client{
-		Timeout: time.Second * 30,
-	}
+	w := NewWorker()
+	w.StartWorkers()
 
 	AddParser(&parsers.ProxyListParser{})
 	AddParser(&parsers.TextListParser{})
@@ -79,7 +113,10 @@ func Loop(cfg *config.Config) {
 		site.Save()
 	}
 
-	for {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
 		lastSite := site.GetLastOne()
 
 		if lastSite == nil {
@@ -89,6 +126,6 @@ func Loop(cfg *config.Config) {
 		}
 
 		logger.LogDebug("[parser] Found site: '%s'", lastSite.Url)
-		parseSite(client, lastSite)
+		w.siteChan <- lastSite
 	}
 }

@@ -162,7 +162,6 @@ func extractIP(body, checkURL string) string {
 			}
 		}
 	default:
-		// Для простых ответов, содержащих только IP
 		return strings.TrimSpace(body)
 	}
 	return ""

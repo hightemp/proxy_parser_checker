@@ -105,6 +105,7 @@ func checkProxy(lastProxy *proxy.Proxy) {
 	mtx.Unlock()
 
 	if lastProxy.IsWork {
+		logger.LogDebug("[checker][!] Found proxy: %s '%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
 		proxy.SaveWorkProxies()
 		proxy.Save()
 	}
@@ -188,7 +189,7 @@ func Loop(cfg *config.Config) {
 			continue
 		}
 
-		logger.LogDebug("[checker] Found proxy: %s '%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
+		logger.LogDebug("[checker] Checking proxy: %s '%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
 		pc.proxyChan <- lastProxy
 	}
 }

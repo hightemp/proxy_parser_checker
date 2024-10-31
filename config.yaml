@@ -1,6 +1,6 @@
 server_port: 8081
-check_period: 1h
-parse_period: 1h
+check_period: 10h
+parse_period: 10h
 sites_for_parsing:
   - https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc
   - https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt

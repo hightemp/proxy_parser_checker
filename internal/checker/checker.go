@@ -77,7 +77,7 @@ func checkProxy(lastProxy *proxy.Proxy) {
 
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * 30,
 	}
 
 	var results []proxyCheckResult

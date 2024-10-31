@@ -2,5 +2,5 @@
 
 curl -X GET \
      -H "Content-Type: application/json" \
-     http://localhost:8081/api/v1/sites
-echo
+     http://localhost:8081/api/v1/proxies/working/first
+echo 

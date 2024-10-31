@@ -7,5 +7,5 @@ curl -X DELETE \
        "port": "8080",
        "protocol": "http"
      }' \
-     http://localhost:8081/proxies/delete
-echo 
+     http://localhost:8081/api/v1/proxies
+echo

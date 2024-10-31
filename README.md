@@ -18,23 +18,25 @@ make build_static
 
 ## API Endpoints
 
+All endpoints are prefixed with `/api/v1`
+
 ### Get All Working Proxies
-- **URL**: `/work-proxies/all`
+- **URL**: `/proxies/working`
 - **Method**: `GET`
 - **Response**: List of all working proxy servers
 
-### Get Single Working Proxy
-- **URL**: `/work-proxies/one`
+### Get First Working Proxy
+- **URL**: `/proxies/working/first`
 - **Method**: `GET`
 - **Response**: Returns a single working proxy server
 
 ### Get All Proxies
-- **URL**: `/proxies/all`
+- **URL**: `/proxies`
 - **Method**: `GET`
 - **Response**: List of all proxy servers (working and non-working)
 
 ### Add New Proxy
-- **URL**: `/proxies/add`
+- **URL**: `/proxies`
 - **Method**: `POST`
 - **Body**:
   ```json
@@ -46,24 +48,8 @@ make build_static
   ```
 - **Response**: Added proxy details
 
-### Get All Sites
-- **URL**: `/sites/all`
-- **Method**: `GET`
-- **Response**: List of all proxy source sites
-
-### Add New Site
-- **URL**: `/sites/add`
-- **Method**: `POST`
-- **Body**:
-  ```json
-  {
-    "url": "https://example.com/proxies"
-  }
-  ```
-- **Response**: Added site URL
-
 ### Delete Proxy
-- **URL**: `/proxies/delete`
+- **URL**: `/proxies`
 - **Method**: `DELETE`
 - **Body**:
   ```json
@@ -75,8 +61,24 @@ make build_static
   ```
 - **Response**: Success message
 
+### Get All Sites
+- **URL**: `/sites`
+- **Method**: `GET`
+- **Response**: List of all proxy source sites
+
+### Add New Site
+- **URL**: `/sites`
+- **Method**: `POST`
+- **Body**:
+  ```json
+  {
+    "url": "https://example.com/proxies"
+  }
+  ```
+- **Response**: Added site URL
+
 ### Delete Site
-- **URL**: `/sites/delete`
+- **URL**: `/sites`
 - **Method**: `DELETE`
 - **Body**:
   ```json

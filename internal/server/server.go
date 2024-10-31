@@ -22,7 +22,165 @@ func jsonResponse(w http.ResponseWriter, status int, resp ProxyResponse) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func handleWorkedProxies(w http.ResponseWriter, r *http.Request) {
+func handleProxies(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		jsonResponse(w, http.StatusOK, ProxyResponse{
+			Success: true,
+			Data:    proxy.GetAllProxies(),
+		})
+	case http.MethodPost:
+		var newProxy proxy.Proxy
+		if err := json.NewDecoder(r.Body).Decode(&newProxy); err != nil {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "Invalid request body",
+			})
+			return
+		}
+
+		proxy.Add(newProxy)
+		if err := proxy.Save(); err != nil {
+			jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+				Success: false,
+				Error:   "Failed to save proxy",
+			})
+			return
+		}
+
+		jsonResponse(w, http.StatusCreated, ProxyResponse{
+			Success: true,
+			Data:    newProxy,
+		})
+	case http.MethodDelete:
+		var proxyToDelete proxy.Proxy
+		if err := json.NewDecoder(r.Body).Decode(&proxyToDelete); err != nil {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "Invalid request body",
+			})
+			return
+		}
+
+		if deleted := proxy.Delete(proxyToDelete); !deleted {
+			jsonResponse(w, http.StatusNotFound, ProxyResponse{
+				Success: false,
+				Error:   "Proxy not found",
+			})
+			return
+		}
+
+		if err := proxy.Save(); err != nil {
+			jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+				Success: false,
+				Error:   "Failed to save changes",
+			})
+			return
+		}
+
+		jsonResponse(w, http.StatusOK, ProxyResponse{
+			Success: true,
+			Data:    "Proxy deleted successfully",
+		})
+	default:
+		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
+			Success: false,
+			Error:   "Method not allowed",
+		})
+	}
+}
+
+func handleSites(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		jsonResponse(w, http.StatusOK, ProxyResponse{
+			Success: true,
+			Data:    site.GetAllSites(),
+		})
+	case http.MethodPost:
+		var requestBody struct {
+			URL string `json:"url"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "Invalid request body",
+			})
+			return
+		}
+
+		if requestBody.URL == "" {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "URL is required",
+			})
+			return
+		}
+
+		site.Add(requestBody.URL)
+		if err := site.Save(); err != nil {
+			jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+				Success: false,
+				Error:   "Failed to save site",
+			})
+			return
+		}
+
+		jsonResponse(w, http.StatusCreated, ProxyResponse{
+			Success: true,
+			Data:    requestBody.URL,
+		})
+	case http.MethodDelete:
+		var requestBody struct {
+			URL string `json:"url"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "Invalid request body",
+			})
+			return
+		}
+
+		if requestBody.URL == "" {
+			jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+				Success: false,
+				Error:   "URL is required",
+			})
+			return
+		}
+
+		if deleted := site.Delete(requestBody.URL); !deleted {
+			jsonResponse(w, http.StatusNotFound, ProxyResponse{
+				Success: false,
+				Error:   "Site not found",
+			})
+			return
+		}
+
+		if err := site.Save(); err != nil {
+			jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+				Success: false,
+				Error:   "Failed to save changes",
+			})
+			return
+		}
+
+		jsonResponse(w, http.StatusOK, ProxyResponse{
+			Success: true,
+			Data:    "Site deleted successfully",
+		})
+	default:
+		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
+			Success: false,
+			Error:   "Method not allowed",
+		})
+	}
+}
+
+func handleWorkingProxies(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
 			Success: false,
@@ -31,14 +189,13 @@ func handleWorkedProxies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workProxies := proxy.GetWorkProxies()
 	jsonResponse(w, http.StatusOK, ProxyResponse{
 		Success: true,
-		Data:    workProxies,
+		Data:    proxy.GetWorkProxies(),
 	})
 }
 
-func handleGetWorkProxy(w http.ResponseWriter, r *http.Request) {
+func handleFirstWorkingProxy(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
 			Success: false,
@@ -56,222 +213,20 @@ func handleGetWorkProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the first working proxy
 	jsonResponse(w, http.StatusOK, ProxyResponse{
 		Success: true,
 		Data:    workProxies[0],
 	})
 }
 
-func handleGetAllProxies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    proxy.GetAllProxies(),
-	})
-}
-
-func handleAddProxy(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	var newProxy proxy.Proxy
-	if err := json.NewDecoder(r.Body).Decode(&newProxy); err != nil {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	proxy.Add(newProxy)
-	proxy.Save()
-	if err := proxy.Save(); err != nil {
-		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
-			Success: false,
-			Error:   "Failed to save proxy",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    newProxy,
-	})
-}
-
-func handleGetAllSites(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    site.GetAllSites(),
-	})
-}
-
-func handleAddSite(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	var requestBody struct {
-		URL string `json:"url"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	if requestBody.URL == "" {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "URL is required",
-		})
-		return
-	}
-
-	site.Add(requestBody.URL)
-	site.Save()
-	if err := site.Save(); err != nil {
-		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
-			Success: false,
-			Error:   "Failed to save site",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    requestBody.URL,
-	})
-}
-
-func handleDeleteProxy(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	var proxyToDelete proxy.Proxy
-	if err := json.NewDecoder(r.Body).Decode(&proxyToDelete); err != nil {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	if deleted := proxy.Delete(proxyToDelete); !deleted {
-		jsonResponse(w, http.StatusNotFound, ProxyResponse{
-			Success: false,
-			Error:   "Proxy not found",
-		})
-		return
-	}
-
-	if err := proxy.Save(); err != nil {
-		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
-			Success: false,
-			Error:   "Failed to save changes",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    "Proxy deleted successfully",
-	})
-}
-
-func handleDeleteSite(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	var requestBody struct {
-		URL string `json:"url"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	if requestBody.URL == "" {
-		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
-			Success: false,
-			Error:   "URL is required",
-		})
-		return
-	}
-
-	if deleted := site.Delete(requestBody.URL); !deleted {
-		jsonResponse(w, http.StatusNotFound, ProxyResponse{
-			Success: false,
-			Error:   "Site not found",
-		})
-		return
-	}
-
-	if err := site.Save(); err != nil {
-		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
-			Success: false,
-			Error:   "Failed to save changes",
-		})
-		return
-	}
-
-	jsonResponse(w, http.StatusOK, ProxyResponse{
-		Success: true,
-		Data:    "Site deleted successfully",
-	})
-}
-
 func Start() {
-	http.HandleFunc("/work-proxies/all", handleWorkedProxies)
-	http.HandleFunc("/work-proxies/one", handleGetWorkProxy)
-	http.HandleFunc("/proxies/all", handleGetAllProxies)
-	http.HandleFunc("/proxies/add", handleAddProxy)
-	http.HandleFunc("/sites/all", handleGetAllSites)
-	http.HandleFunc("/sites/add", handleAddSite)
-	http.HandleFunc("/proxies/delete", handleDeleteProxy)
-	http.HandleFunc("/sites/delete", handleDeleteSite)
+	// Proxy endpoints
+	http.HandleFunc("/api/v1/proxies", handleProxies)
+	http.HandleFunc("/api/v1/proxies/working", handleWorkingProxies)
+	http.HandleFunc("/api/v1/proxies/working/first", handleFirstWorkingProxy)
+
+	// Site endpoints
+	http.HandleFunc("/api/v1/sites", handleSites)
 
 	port := config.GetConfig().ServerPort
 	if port == "" {

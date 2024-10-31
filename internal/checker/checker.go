@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +43,19 @@ func (pc *ProxyChecker) worker() {
 	}
 }
 
+var checkURLs = []string{
+	"https://api.ipify.org?format=json",
+	"https://ifconfig.me/ip",
+	"https://api.myip.com",
+	"https://checkip.amazonaws.com",
+}
+
+type proxyCheckResult struct {
+	success    bool
+	pingTime   time.Duration
+	detectedIP string
+}
+
 func checkProxy(lastProxy *proxy.Proxy) {
 	mtx.Lock()
 	lastProxy.LastCheckedTime = time.Now()
@@ -66,57 +80,91 @@ func checkProxy(lastProxy *proxy.Proxy) {
 		Timeout:   time.Second * 5,
 	}
 
-	logger.LogDebug("[checker] Making request with proxy '%s://%s:%s'", lastProxy.Protocol, lastProxy.Ip, lastProxy.Port)
+	var results []proxyCheckResult
+	var totalPingTime time.Duration
+
+	for _, checkURL := range checkURLs {
+		result := checkSingleURL(client, checkURL)
+		if result.success && result.detectedIP == lastProxy.Ip {
+			results = append(results, result)
+			totalPingTime += result.pingTime
+		}
+	}
+
+	successRate := float64(len(results)) / float64(len(checkURLs))
+
+	mtx.Lock()
+	if successRate > 0.5 {
+		lastProxy.IsWork = true
+		lastProxy.PingTime = totalPingTime / time.Duration(len(results))
+		logger.LogInfo("[checker] Proxy checked successfully. Success rate: %.2f, Average ping time: %v",
+			successRate, lastProxy.PingTime)
+	} else {
+		logger.LogError("[checker] Proxy check failed. Success rate: %.2f", successRate)
+	}
+	mtx.Unlock()
+
+	if lastProxy.IsWork {
+		proxy.SaveWorkProxies()
+		proxy.Save()
+	}
+}
+
+func checkSingleURL(client *http.Client, checkURL string) proxyCheckResult {
+	result := proxyCheckResult{success: false}
+
 	startTime := time.Now()
-	resp, err := client.Get("https://api.ipify.org?format=json")
-	pingTime := time.Since(startTime)
+	resp, err := client.Get(checkURL)
+	result.pingTime = time.Since(startTime)
 
 	if err != nil {
-		logger.LogError("[checker] Proxy check failed: %v", err)
-		return
+		logger.LogError("[checker] Request to %s failed: %v", checkURL, err)
+		return result
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.LogError("[checker] Bad response status: %d", resp.StatusCode)
-		return
+		logger.LogError("[checker] Bad response status from %s: %d", checkURL, resp.StatusCode)
+		return result
 	}
 
 	bodyBuffer := new(bytes.Buffer)
 	_, err = bodyBuffer.ReadFrom(resp.Body)
 	if err != nil {
-		logger.LogError("[parser] Can't read body: %v", err)
-		return
-	}
-	body := bodyBuffer.String()
-	resp.Body.Close()
-
-	// {"ip":"5.1.1.1"}
-	var o map[string]interface{}
-
-	err = json.Unmarshal([]byte(body), &o)
-
-	if err != nil {
-		logger.LogError("Can't parse json: %v", err)
-		return
+		logger.LogError("[checker] Can't read body from %s: %v", checkURL, err)
+		return result
 	}
 
-	ip, ok := o["ip"].(string)
-	if !ok {
-		logger.LogError("Can't parse ip: %v", err)
-		return
+	if ip := extractIP(bodyBuffer.String(), checkURL); ip != "" {
+		result.success = true
+		result.detectedIP = ip
+		logger.LogInfo("[checker] Successfully checked %s, detected IP: %s", checkURL, ip)
 	}
 
-	logger.LogInfo("[checker] Found response ip: %v", ip)
+	return result
+}
 
-	mtx.Lock()
-	lastProxy.IsWork = true
-	lastProxy.PingTime = pingTime
-	mtx.Unlock()
-
-	logger.LogInfo("[checker] Proxy checked successfully. Ping time: %v", pingTime)
-	proxy.SaveWorkProxies()
-	proxy.Save()
+func extractIP(body, checkURL string) string {
+	switch {
+	case checkURL == "https://api.ipify.org?format=json":
+		var response map[string]interface{}
+		if err := json.Unmarshal([]byte(body), &response); err == nil {
+			if ip, ok := response["ip"].(string); ok {
+				return ip
+			}
+		}
+	case checkURL == "https://api.myip.com":
+		var response map[string]interface{}
+		if err := json.Unmarshal([]byte(body), &response); err == nil {
+			if ip, ok := response["ip"].(string); ok {
+				return ip
+			}
+		}
+	default:
+		// Для простых ответов, содержащих только IP
+		return strings.TrimSpace(body)
+	}
+	return ""
 }
 
 func Loop(cfg *config.Config) {

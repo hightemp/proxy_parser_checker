@@ -172,6 +172,97 @@ func handleAddSite(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleDeleteProxy(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
+			Success: false,
+			Error:   "Method not allowed",
+		})
+		return
+	}
+
+	var proxyToDelete proxy.Proxy
+	if err := json.NewDecoder(r.Body).Decode(&proxyToDelete); err != nil {
+		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+		return
+	}
+
+	if deleted := proxy.Delete(proxyToDelete); !deleted {
+		jsonResponse(w, http.StatusNotFound, ProxyResponse{
+			Success: false,
+			Error:   "Proxy not found",
+		})
+		return
+	}
+
+	if err := proxy.Save(); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+			Success: false,
+			Error:   "Failed to save changes",
+		})
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, ProxyResponse{
+		Success: true,
+		Data:    "Proxy deleted successfully",
+	})
+}
+
+func handleDeleteSite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
+			Success: false,
+			Error:   "Method not allowed",
+		})
+		return
+	}
+
+	var requestBody struct {
+		URL string `json:"url"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+		return
+	}
+
+	if requestBody.URL == "" {
+		jsonResponse(w, http.StatusBadRequest, ProxyResponse{
+			Success: false,
+			Error:   "URL is required",
+		})
+		return
+	}
+
+	if deleted := site.Delete(requestBody.URL); !deleted {
+		jsonResponse(w, http.StatusNotFound, ProxyResponse{
+			Success: false,
+			Error:   "Site not found",
+		})
+		return
+	}
+
+	if err := site.Save(); err != nil {
+		jsonResponse(w, http.StatusInternalServerError, ProxyResponse{
+			Success: false,
+			Error:   "Failed to save changes",
+		})
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, ProxyResponse{
+		Success: true,
+		Data:    "Site deleted successfully",
+	})
+}
+
 func Start() {
 	http.HandleFunc("/work-proxies/all", handleWorkedProxies)
 	http.HandleFunc("/work-proxies/one", handleGetWorkProxy)
@@ -179,6 +270,8 @@ func Start() {
 	http.HandleFunc("/proxies/add", handleAddProxy)
 	http.HandleFunc("/sites/all", handleGetAllSites)
 	http.HandleFunc("/sites/add", handleAddSite)
+	http.HandleFunc("/proxies/delete", handleDeleteProxy)
+	http.HandleFunc("/sites/delete", handleDeleteSite)
 
 	port := config.GetConfig().ServerPort
 	if port == "" {

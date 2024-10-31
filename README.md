@@ -62,6 +62,30 @@ make build_static
   ```
 - **Response**: Added site URL
 
+### Delete Proxy
+- **URL**: `/proxies/delete`
+- **Method**: `DELETE`
+- **Body**:
+  ```json
+  {
+    "ip": "192.168.1.1",
+    "port": "8080",
+    "protocol": "http"
+  }
+  ```
+- **Response**: Success message
+
+### Delete Site
+- **URL**: `/sites/delete`
+- **Method**: `DELETE`
+- **Body**:
+  ```json
+  {
+    "url": "https://example.com/proxies"
+  }
+  ```
+- **Response**: Success message
+
 ### Response Format
 All endpoints return JSON responses in the following format:
 ```json

@@ -43,6 +43,17 @@ func Find(p Proxy) int {
 	return -1
 }
 
+func Delete(p Proxy) bool {
+	index := Find(p)
+	if index != -1 {
+		proxiesList = append(proxiesList[:index], proxiesList[index+1:]...)
+		IsDirty = true
+		logger.LogDebug("[proxy] deleted proxy '%s:%s'", p.Ip, p.Port)
+		return true
+	}
+	return false
+}
+
 func Add(p Proxy) {
 	index := Find(p)
 

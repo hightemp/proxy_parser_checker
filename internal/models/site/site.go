@@ -90,3 +90,14 @@ func Save() error {
 func GetAllSites() []Site {
 	return sites
 }
+
+func Delete(url string) bool {
+	index := FindUrl(url)
+	if index != -1 {
+		sites = append(sites[:index], sites[index+1:]...)
+		IsDirty = true
+		logger.LogDebug("[site] deleted site '%s'", url)
+		return true
+	}
+	return false
+}

@@ -13,8 +13,16 @@ import (
 	"github.com/hightemp/proxy_parser_checker/internal/server"
 )
 
-func main() {
+const (
+	VERSION = "v0.0.1"
+)
+
+func init() {
 	logger.InitLogger()
+}
+
+func main() {
+	logger.LogInfo("proxy_parser_checker Version: %s", VERSION)
 
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	flag.Parse()

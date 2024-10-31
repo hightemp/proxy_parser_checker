@@ -10,7 +10,12 @@ SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 
 PROXY_FILE=$(realpath "$SCRIPTPATH/../out/all_proxies.yaml")
-TEST_URL="https://ifconfig.me/ip"
+TEST_URLS=(
+    "https://api.ipify.org?format=json"
+    "https://ifconfig.me/ip"
+    "https://api.myip.com"
+    "https://checkip.amazonaws.com"
+)
 TIMEOUT=10
 
 if [ ! -f "$PROXY_FILE" ]; then
@@ -25,18 +30,21 @@ check_proxy() {
     
     echo "Checking $protocol://$ip:$port"
     
-    if curl --proxy "$protocol://$ip:$port" \
-            --max-time $TIMEOUT \
-            --silent \
-            --output /dev/null \
-            --write-out "%{http_code}" \
-            "$TEST_URL" | grep -q "200"; then
-        echo "✅ Proxy working"
-        return 0
-    else
-        echo "❌ Proxy not working"
-        return 1
-    fi
+    for url in "${TEST_URLS[@]}"; do
+        echo "Testing against $url"
+        if curl --proxy "$protocol://$ip:$port" \
+                --max-time $TIMEOUT \
+                --silent \
+                --output /dev/null \
+                --write-out "%{http_code}" \
+                "$url" | grep -q "200"; then
+            echo "✅ Proxy working with $url"
+            return 0
+        fi
+    done
+    
+    echo "❌ Proxy not working with any test URL"
+    return 1
 }
 
 PROXY_COUNT=$(yq '. | length' "$PROXY_FILE")

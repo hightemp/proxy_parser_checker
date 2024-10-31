@@ -72,7 +72,12 @@ func Loop(cfg *config.Config) {
 	AddParser(&parsers.TextListParser{})
 
 	site.SetParsePeriodDuration(cfg.ParsePeriodDuration)
-	site.AddList(cfg.SitesForParsing)
+	if site.FileExists() {
+		site.Load()
+	} else {
+		site.AddList(cfg.SitesForParsing)
+		site.Save()
+	}
 
 	for {
 		lastSite := site.GetLastOne()

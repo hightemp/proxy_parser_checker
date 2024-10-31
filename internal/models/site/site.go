@@ -101,3 +101,25 @@ func Delete(url string) bool {
 	}
 	return false
 }
+
+func Load() error {
+	yamlData, err := os.ReadFile("./out/sites_for_parsing.yaml")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("Can't read file: %v", err)
+	}
+
+	err = yaml.Unmarshal(yamlData, &sites)
+	if err != nil {
+		return fmt.Errorf("Can't unpack yaml: %v", err)
+	}
+
+	return nil
+}
+
+func FileExists() bool {
+	_, err := os.Stat("./out/sites_for_parsing.yaml")
+	return os.IsExist(err)
+}

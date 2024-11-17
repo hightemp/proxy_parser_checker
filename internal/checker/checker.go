@@ -19,25 +19,22 @@ import (
 
 var (
 	mtx          sync.Mutex
-	maxWorkers   int     = runtime.NumCPU()
+	maxWorkers   int     = runtime.NumCPU() * 2
 	CheckRate    float32 = 0
 	checkCounter int     = 0
 )
 
 type ProxyChecker struct {
 	proxyChan chan *proxy.Proxy
-	wg        sync.WaitGroup
 }
 
 func NewProxyChecker() *ProxyChecker {
 	return &ProxyChecker{
-		proxyChan: make(chan *proxy.Proxy, maxWorkers),
+		proxyChan: make(chan *proxy.Proxy, maxWorkers*2),
 	}
 }
 
 func (pc *ProxyChecker) worker() {
-	defer pc.wg.Done()
-
 	for p := range pc.proxyChan {
 		checkProxy(p)
 	}
@@ -77,7 +74,7 @@ func checkProxy(lastProxy *proxy.Proxy) {
 
 	client := &http.Client{
 		Transport: transport,
-		Timeout:   time.Second * 30,
+		Timeout:   time.Second * 5,
 	}
 
 	var results []proxyCheckResult
@@ -186,7 +183,6 @@ func Loop(cfg *config.Config) {
 	pc := NewProxyChecker()
 
 	for i := 0; i < maxWorkers; i++ {
-		pc.wg.Add(1)
 		go pc.worker()
 	}
 

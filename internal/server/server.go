@@ -230,14 +230,15 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type StatsInfo struct {
-		TotalProxies   int     `json:"total_proxies"`
-		WorkedProxies  int     `json:"worked_proxies"`
-		BlockedProxies int     `json:"blocked_proxies"`
-		CheckRate      float32 `json:"check_rate"`
+		TotalProxies      int     `json:"total_proxies"`
+		WorkedProxies     int     `json:"worked_proxies"`
+		BlockedProxies    int     `json:"blocked_proxies"`
+		NotCheckedProxies int     `json:"not_checked_proxies"`
+		CheckRate         float32 `json:"check_rate"`
 	}
 
 	proxies := proxy.GetAllProxies()
-	workedProxies, blockedProxies := 0, 0
+	workedProxies, blockedProxies, notCheckedProxies := 0, 0, 0
 
 	for _, p := range proxies {
 		if p.IsWork && p.FailsCount < proxy.MaxFailsCount {
@@ -246,13 +247,17 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		if p.FailsCount >= proxy.MaxFailsCount {
 			blockedProxies++
 		}
+		if proxy.IsExpired(p.LastCheckedTime) {
+			notCheckedProxies++
+		}
 	}
 
 	statsInfo := StatsInfo{
-		TotalProxies:   len(proxies),
-		WorkedProxies:  workedProxies,
-		BlockedProxies: blockedProxies,
-		CheckRate:      checker.CheckRate,
+		TotalProxies:      len(proxies),
+		WorkedProxies:     workedProxies,
+		BlockedProxies:    blockedProxies,
+		NotCheckedProxies: notCheckedProxies,
+		CheckRate:         checker.CheckRate,
 	}
 
 	jsonResponse(w, http.StatusOK, ProxyResponse{

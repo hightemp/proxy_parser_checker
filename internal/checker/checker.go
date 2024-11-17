@@ -19,7 +19,7 @@ import (
 
 var (
 	mtx          sync.Mutex
-	maxWorkers   int     = runtime.NumCPU() * 2
+	maxWorkers   int     = runtime.NumCPU() * 4
 	CheckRate    float32 = 0
 	checkCounter int     = 0
 )

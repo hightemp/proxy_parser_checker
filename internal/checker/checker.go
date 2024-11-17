@@ -94,11 +94,11 @@ func checkProxy(lastProxy *proxy.Proxy) {
 	successRate := float64(len(results)) / float64(len(checkURLs))
 
 	mtx.Lock()
+	checkCounter++
 	if successRate > 0.5 {
 		lastProxy.IsWork = true
 		lastProxy.PingTime = totalPingTime / time.Duration(len(results))
 		lastProxy.SuccessCount++
-		checkCounter++
 		logger.LogInfo("[checker] Proxy checked successfully. Success rate: %.2f, Average ping time: %v",
 			successRate, lastProxy.PingTime)
 	} else {

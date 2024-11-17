@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/hightemp/proxy_parser_checker/internal/checker"
 	"github.com/hightemp/proxy_parser_checker/internal/config"
 	"github.com/hightemp/proxy_parser_checker/internal/logger"
 	"github.com/hightemp/proxy_parser_checker/internal/models/proxy"
@@ -229,9 +230,10 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type StatsInfo struct {
-		TotalProxies   int `json:"total_proxies"`
-		WorkedProxies  int `json:"worked_proxies"`
-		BlockedProxies int `json:"blocked_proxies"`
+		TotalProxies   int     `json:"total_proxies"`
+		WorkedProxies  int     `json:"worked_proxies"`
+		BlockedProxies int     `json:"blocked_proxies"`
+		CheckRate      float32 `json:"check_rate"`
 	}
 
 	proxies := proxy.GetAllProxies()
@@ -240,7 +242,8 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	for _, p := range proxies {
 		if p.IsWork && p.FailsCount < proxy.MaxFailsCount {
 			workedProxies++
-		} else {
+		}
+		if p.FailsCount >= proxy.MaxFailsCount {
 			blockedProxies++
 		}
 	}
@@ -249,6 +252,7 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		TotalProxies:   len(proxies),
 		WorkedProxies:  workedProxies,
 		BlockedProxies: blockedProxies,
+		CheckRate:      checker.CheckRate,
 	}
 
 	jsonResponse(w, http.StatusOK, ProxyResponse{

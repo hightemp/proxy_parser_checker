@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,11 +18,10 @@ import (
 )
 
 var (
-	mtx sync.Mutex
-)
-
-const (
-	maxWorkers = 10
+	mtx          sync.Mutex
+	maxWorkers   int     = runtime.NumCPU()
+	CheckRate    float32 = 0
+	checkCounter int     = 0
 )
 
 type ProxyChecker struct {
@@ -97,9 +97,12 @@ func checkProxy(lastProxy *proxy.Proxy) {
 	if successRate > 0.5 {
 		lastProxy.IsWork = true
 		lastProxy.PingTime = totalPingTime / time.Duration(len(results))
+		lastProxy.SuccessCount++
+		checkCounter++
 		logger.LogInfo("[checker] Proxy checked successfully. Success rate: %.2f, Average ping time: %v",
 			successRate, lastProxy.PingTime)
 	} else {
+		lastProxy.FailsCount++
 		logger.LogError("[checker] Proxy check failed. Success rate: %.2f", successRate)
 	}
 	mtx.Unlock()
@@ -168,6 +171,16 @@ func extractIP(body, checkURL string) string {
 }
 
 func Loop(cfg *config.Config) {
+	go func() {
+		t := time.NewTicker(60 * time.Second)
+		for range t.C {
+			mtx.Lock()
+			CheckRate = float32(checkCounter) / 60
+			checkCounter = 0
+			logger.LogDebug("[checker] Check rate: %f proxies per second", CheckRate)
+			mtx.Unlock()
+		}
+	}()
 	proxy.SetCheckPeriodDuration(cfg.CheckPeriodDuration)
 
 	pc := NewProxyChecker()
@@ -177,11 +190,11 @@ func Loop(cfg *config.Config) {
 		go pc.worker()
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
+	for {
+		mtx.Lock()
 		lastProxy := proxy.GetLastNotCheckedOne()
+		mtx.Unlock()
+
 		if lastProxy == nil {
 			logger.LogDebug("[checker] No proxy found")
 			time.Sleep(10 * time.Second)

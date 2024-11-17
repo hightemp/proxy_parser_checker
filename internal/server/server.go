@@ -219,14 +219,52 @@ func handleFirstWorkingProxy(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		jsonResponse(w, http.StatusMethodNotAllowed, ProxyResponse{
+			Success: false,
+			Error:   "Method not allowed",
+		})
+		return
+	}
+
+	type StatsInfo struct {
+		TotalProxies   int `json:"total_proxies"`
+		WorkedProxies  int `json:"worked_proxies"`
+		BlockedProxies int `json:"blocked_proxies"`
+	}
+
+	proxies := proxy.GetAllProxies()
+	workedProxies, blockedProxies := 0, 0
+
+	for _, p := range proxies {
+		if p.IsWork && p.FailsCount < proxy.MaxFailsCount {
+			workedProxies++
+		} else {
+			blockedProxies++
+		}
+	}
+
+	statsInfo := StatsInfo{
+		TotalProxies:   len(proxies),
+		WorkedProxies:  workedProxies,
+		BlockedProxies: blockedProxies,
+	}
+
+	jsonResponse(w, http.StatusOK, ProxyResponse{
+		Success: true,
+		Data:    statsInfo,
+	})
+}
+
 func Start() {
-	// Proxy endpoints
 	http.HandleFunc("/api/v1/proxies", handleProxies)
 	http.HandleFunc("/api/v1/proxies/working", handleWorkingProxies)
 	http.HandleFunc("/api/v1/proxies/working/first", handleFirstWorkingProxy)
 
-	// Site endpoints
 	http.HandleFunc("/api/v1/sites", handleSites)
+
+	http.HandleFunc("/api/v1/stats", handleStats)
 
 	port := config.GetConfig().ServerPort
 	if port == "" {

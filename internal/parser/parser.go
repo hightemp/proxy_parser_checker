@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
@@ -12,10 +13,6 @@ import (
 	"github.com/hightemp/proxy_parser_checker/internal/models/proxy"
 	"github.com/hightemp/proxy_parser_checker/internal/models/site"
 	"github.com/hightemp/proxy_parser_checker/internal/parser/parsers"
-)
-
-const (
-	maxWorkers = 5
 )
 
 type IParser interface {
@@ -32,6 +29,7 @@ type Worker struct {
 var (
 	parsersList []IParser
 	mtx         sync.Mutex
+	maxWorkers  int = runtime.NumCPU()
 )
 
 func AddParser(p IParser) {
@@ -113,10 +111,7 @@ func Loop(cfg *config.Config) {
 		site.Save()
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
+	for {
 		lastSite := site.GetLastOne()
 
 		if lastSite == nil {

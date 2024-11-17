@@ -12,6 +12,8 @@ import (
 const (
 	PROTO_HTTP  = "http"
 	PROTO_HTTPS = "https"
+
+	MaxFailsCount = 3
 )
 
 type Proxy struct {
@@ -21,6 +23,8 @@ type Proxy struct {
 	LastCheckedTime time.Time     `yaml:"last_checked_time"`
 	PingTime        time.Duration `yaml:"ping_time"`
 	IsWork          bool          `yaml:"is_work"`
+	FailsCount      int           `yaml:"fails_count"`
+	SuccessCount    int           `yaml:"success_count"`
 }
 
 var (
@@ -78,7 +82,8 @@ func IsExpired(t time.Time) bool {
 
 func GetLastNotCheckedOne() *Proxy {
 	for i := range proxiesList {
-		if IsExpired(proxiesList[i].LastCheckedTime) {
+		if IsExpired(proxiesList[i].LastCheckedTime) && proxiesList[i].FailsCount < MaxFailsCount {
+			proxiesList[i].LastCheckedTime = time.Now()
 			return &proxiesList[i]
 		}
 	}

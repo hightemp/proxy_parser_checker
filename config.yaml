@@ -3,6 +3,10 @@ check_period: 10h
 parse_period: 10h
 sites_for_parsing:
   - https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc
+  - https://proxylist.geonode.com/api/proxy-list?limit=500&page=2&sort_by=lastChecked&sort_type=desc
+  - https://proxylist.geonode.com/api/proxy-list?limit=500&page=3&sort_by=lastChecked&sort_type=desc
+  - https://proxylist.geonode.com/api/proxy-list?limit=500&page=4&sort_by=lastChecked&sort_type=desc
+  - https://proxylist.geonode.com/api/proxy-list?limit=500&page=5&sort_by=lastChecked&sort_type=desc
   - https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt
   - https://api.openproxylist.xyz/http.txt
   - https://api.proxyscrape.com/v2/?request=getproxies&protocol=http

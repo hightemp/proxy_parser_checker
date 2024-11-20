@@ -247,7 +247,7 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		if p.FailsCount >= proxy.MaxFailsCount {
 			blockedProxies++
 		}
-		if proxy.IsExpired(p.LastCheckedTime) {
+		if p.FailsCount < proxy.MaxFailsCount && proxy.IsExpired(p.LastCheckedTime) {
 			notCheckedProxies++
 		}
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/hightemp/proxy_parser_checker/internal/checker"
@@ -235,6 +236,8 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		BlockedProxies    int     `json:"blocked_proxies"`
 		NotCheckedProxies int     `json:"not_checked_proxies"`
 		CheckRate         float32 `json:"check_rate"`
+		EstimatedMinutes  float32 `json:"estimated_minutes"`
+		EstimatedTime     string  `json:"estimated_time"`
 	}
 
 	proxies := proxy.GetAllProxies()
@@ -252,12 +255,28 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var estimatedMinutes float32 = 0
+	if checker.CheckRate > 0 {
+		estimatedMinutes = float32(notCheckedProxies) / (checker.CheckRate * 60)
+	}
+
+	hours := int(estimatedMinutes) / 60
+	minutes := int(estimatedMinutes) % 60
+	estimatedTime := ""
+	if hours > 0 {
+		estimatedTime = fmt.Sprintf("%dh %dm", hours, minutes)
+	} else {
+		estimatedTime = fmt.Sprintf("%dm", minutes)
+	}
+
 	statsInfo := StatsInfo{
 		TotalProxies:      len(proxies),
 		WorkedProxies:     workedProxies,
 		BlockedProxies:    blockedProxies,
 		NotCheckedProxies: notCheckedProxies,
 		CheckRate:         checker.CheckRate,
+		EstimatedMinutes:  estimatedMinutes,
+		EstimatedTime:     estimatedTime,
 	}
 
 	jsonResponse(w, http.StatusOK, ProxyResponse{

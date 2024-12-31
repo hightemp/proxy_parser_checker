@@ -1,45 +1,48 @@
 package logger
 
 import (
-	"log"
 	"os"
+	"time"
+
+	"github.com/rs/zerolog"
 )
 
-type LogLevel int
-
-const (
-	DEBUG LogLevel = iota
-	INFO
-	WARNING
-	ERROR
-)
-
-var loggers map[LogLevel]*log.Logger
+var log zerolog.Logger
 
 func InitLogger() {
-	loggers = make(map[LogLevel]*log.Logger)
-	loggers[DEBUG] = log.New(os.Stdout, "DEBUG: ", log.Ltime)
-	loggers[INFO] = log.New(os.Stdout, "INFO: ", log.Ltime)
-	loggers[WARNING] = log.New(os.Stdout, "WARNING: ", log.Ltime)
-	loggers[ERROR] = log.New(os.Stderr, "ERROR: ", log.Ltime|log.Llongfile)
+	zerolog.TimeFieldFormat = time.RFC3339
+
+	output := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: "15:04:05",
+		NoColor:    false,
+	}
+
+	log = zerolog.New(output).
+		With().
+		Timestamp().
+		Caller().
+		Logger()
+
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 }
 
 func LogDebug(format string, v ...any) {
-	loggers[DEBUG].Printf(format, v...)
+	log.Debug().Msgf(format, v...)
 }
 
 func LogInfo(format string, v ...any) {
-	loggers[INFO].Printf(format, v...)
+	log.Info().Msgf(format, v...)
 }
 
 func LogWarning(format string, v ...any) {
-	loggers[WARNING].Printf(format, v...)
+	log.Warn().Msgf(format, v...)
 }
 
 func LogError(format string, v ...any) {
-	loggers[ERROR].Printf(format, v...)
+	log.Error().Msgf(format, v...)
 }
 
 func PanicError(format string, v ...any) {
-	loggers[ERROR].Panicf(format, v...)
+	log.Panic().Msgf(format, v...)
 }

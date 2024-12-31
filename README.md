@@ -88,6 +88,25 @@ All endpoints are prefixed with `/api/v1`
   ```
 - **Response**: Success message
 
+### Get Proxies Stats
+- **URL**: `/stats`
+- **Method**: `GET`
+- **Response**: Returns statistics about proxies and checking process
+  ```json
+  {
+    "success": true,
+    "data": {
+      "total_proxies": 1000,
+      "worked_proxies": 400,
+      "blocked_proxies": 50,
+      "not_checked_proxies": 550,
+      "check_rate": 2.5,
+      "estimated_minutes": 220.0,
+      "estimated_time": "3h 40m"
+    }
+  }
+  ```
+
 ### Response Format
 All endpoints return JSON responses in the following format:
 ```json

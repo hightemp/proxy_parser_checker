@@ -19,19 +19,31 @@ import (
 
 var (
 	mtx          sync.Mutex
-	maxWorkers   int     = runtime.NumCPU() * 4
 	CheckRate    float32 = 0
 	checkCounter int     = 0
 )
 
 type ProxyChecker struct {
-	proxyChan chan *proxy.Proxy
+	proxyChan  chan *proxy.Proxy
+	maxWorkers int
 }
 
-func NewProxyChecker() *ProxyChecker {
-	return &ProxyChecker{
-		proxyChan: make(chan *proxy.Proxy, maxWorkers*2),
+func NewProxyChecker(cfg *config.Config) *ProxyChecker {
+	maxWorkers := cfg.CheckerMaxWorkers
+	if maxWorkers == 0 {
+		maxWorkers = runtime.NumCPU() * 4
 	}
+
+	pc := &ProxyChecker{
+		proxyChan:  make(chan *proxy.Proxy, maxWorkers*2),
+		maxWorkers: maxWorkers,
+	}
+
+	for i := 0; i < maxWorkers; i++ {
+		go pc.worker()
+	}
+
+	return pc
 }
 
 func (pc *ProxyChecker) worker() {
@@ -180,11 +192,7 @@ func Loop(cfg *config.Config) {
 	}()
 	proxy.SetCheckPeriodDuration(cfg.CheckPeriodDuration)
 
-	pc := NewProxyChecker()
-
-	for i := 0; i < maxWorkers; i++ {
-		go pc.worker()
-	}
+	pc := NewProxyChecker(cfg)
 
 	for {
 		mtx.Lock()

@@ -20,39 +20,49 @@ type IParser interface {
 	ParseProxyList(s string) []proxy.Proxy
 }
 
-type Worker struct {
-	siteChan chan *site.Site
-	wg       sync.WaitGroup
-	client   *http.Client
+type WorkerPool struct {
+	siteChan   chan *site.Site
+	wg         sync.WaitGroup
+	client     *http.Client
+	maxWorkers int
 }
 
 var (
 	parsersList []IParser
 	mtx         sync.Mutex
-	maxWorkers  int = runtime.NumCPU()
 )
 
 func AddParser(p IParser) {
 	parsersList = append(parsersList, p)
 }
 
-func NewWorker() *Worker {
-	return &Worker{
+func NewWorkerPool(cfg *config.Config) *WorkerPool {
+	maxWorkers := cfg.ParserMaxWorkers
+	if maxWorkers == 0 {
+		maxWorkers = runtime.NumCPU() * 4
+	}
+
+	wp := &WorkerPool{
 		siteChan: make(chan *site.Site, maxWorkers),
 		client: &http.Client{
 			Timeout: time.Second * 30,
 		},
+		maxWorkers: maxWorkers,
 	}
+
+	wp.StartWorkers()
+
+	return wp
 }
 
-func (w *Worker) StartWorkers() {
-	for i := 0; i < maxWorkers; i++ {
+func (w *WorkerPool) StartWorkers() {
+	for i := 0; i < w.maxWorkers; i++ {
 		w.wg.Add(1)
 		go w.work()
 	}
 }
 
-func (w *Worker) work() {
+func (w *WorkerPool) work() {
 	defer w.wg.Done()
 
 	for s := range w.siteChan {
@@ -60,7 +70,7 @@ func (w *Worker) work() {
 	}
 }
 
-func (w *Worker) parse(lastSite *site.Site) {
+func (w *WorkerPool) parse(lastSite *site.Site) {
 	mtx.Lock()
 	lastSite.LastParsedTime = time.Now()
 	mtx.Unlock()
@@ -97,8 +107,7 @@ func (w *Worker) parse(lastSite *site.Site) {
 }
 
 func Loop(cfg *config.Config) {
-	w := NewWorker()
-	w.StartWorkers()
+	w := NewWorkerPool(cfg)
 
 	AddParser(&parsers.ProxyListParser{})
 	AddParser(&parsers.TextListParser{})

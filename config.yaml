@@ -1,6 +1,8 @@
 server_port: 8081
 check_period: 10h
 parse_period: 10h
+checker_max_workers: 200
+parser_max_workers: 20
 sites_for_parsing:
   - https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc
   - https://proxylist.geonode.com/api/proxy-list?limit=500&page=2&sort_by=lastChecked&sort_type=desc

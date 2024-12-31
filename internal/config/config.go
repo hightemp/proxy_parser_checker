@@ -15,6 +15,8 @@ type Config struct {
 	CheckPeriod         string `yaml:"check_period"`
 	CheckPeriodDuration time.Duration
 	ServerPort          string `yaml:"server_port"`
+	CheckerMaxWorkers   int    `yaml:"checker_max_workers"`
+	ParserMaxWorkers    int    `yaml:"parser_max_workers"`
 }
 
 var c Config

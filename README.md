@@ -2,6 +2,8 @@
 
 A Go program that automatically parses and checks proxy servers from various sources.
 
+Used sources from https://github.com/monosans/proxy-scraper-checker
+
 ## Build
 
 ```bash
